@@ -9,9 +9,9 @@ c.retrieve(
         'format': 'netcdf',
         'variable': [
             '100m_u_component_of_wind', '100m_v_component_of_wind', '2m_temperature',
-            'sea_surface_temperature',
+            'sea_surface_temperature','mean_surface_sensible_heat_flux','friction velocity','air_density_over_the_oceans','Mean_sea_level_pressure'
         ],
-        'year': '2011',
+        'year': '2013',
         'month': '01',
         'day': [
             '01', '02', '03',
@@ -41,5 +41,5 @@ c.retrieve(
             -37.99,
         ],
     },
-    '01-2011-test.nc')
+    '01-2013-testERA5.nc')
 
