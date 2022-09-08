@@ -27,6 +27,10 @@ share/python-wheels/
 *.egg
 MANIFEST
 tcc_env/
+input files/
+Results/
+downloaded_files/
+Files netcdf/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
