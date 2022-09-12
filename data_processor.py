@@ -27,11 +27,11 @@ k=0.4 #von karmann constant
 g=9.81 #gravity
 z=150 #height for calculation of wind speed influence
 
-path_era5=r'C:\Users\bllet\Documents\TCC\TCC\input files\2013-2014-era5.nc' #Path.cwd().joinpath("downloaded_files","01-2013-testERA5.nc")
-path_ERDDAP= r'C:\Users\bllet\Documents\TCC\TCC\input files\2013-2014-erddap-old.nc' #Path.cwd().joinpath("downloaded_files","2011-2012-ERDDAP-old_dataset.nc")
+path_era5=r'C:\Users\bllet\Documents\TCC\TCC\input files\ERA5-Charnock\2015-ERA5.nc' #Path.cwd().joinpath("downloaded_files","01-2013-testERA5.nc")
+path_ERDDAP= r'C:\Users\bllet\Documents\TCC\TCC\input files\2015-2016-erddap-old.nc' #Path.cwd().joinpath("downloaded_files","2011-2012-ERDDAP-old_dataset.nc")
 
-init_date='06-02-2013' #input importante
-end_date='01-01-2014' #input importante
+init_date='01-01-2015' #input importante
+end_date='02-01-2015' #input importante
 
 #%%
 #carregar dados
@@ -51,7 +51,7 @@ t2m=data_ERA5.t2m-273.15 #Kelvin to C
 
 #t2m[20,:,:].plot()
 
-data_erddap.SST[20,:,:].plot()
+#data_erddap.SST[20,:,:].plot()
 # %%
 t2m_era5_daily=t2m.resample(time='1D').mean()# daily averages
 
@@ -59,7 +59,7 @@ t2m_era_5_interp=t2m_era5_daily.interp_like(data_erddap.SST,method= 'linear') #e
 
 delta_T=t2m_era_5_interp-data_erddap.SST
 delta_T=delta_T.assign_attrs(units='C', long_name='Air-sea Temp diff')
-delta_T[5,:,:].plot()
+#delta_T[5,:,:].plot()
 
 #%%
 #calculo da velocide
@@ -67,7 +67,7 @@ delta_T[5,:,:].plot()
 mws_100=(data_ERA5.u100**2+data_ERA5.v100**2)**0.5 #componentes u e v para a total
 
 mws_100=mws_100.resample(time='1D').mean()
-mws_100[1,:,:].plot()
+#mws_100[1,:,:].plot()
 #%%
 #potential temperatures
 
@@ -96,7 +96,7 @@ theta_r=theta_r.interp_like(theta_0,method='linear')
 #temp_dewpt=data_ERA5.d2m
 #specific_humidity=mpcalc.specific_humidity_from_dewpoint(press, temp_dewpt)
 air_density=data_ERA5.p140209.mean()
-air_density
+#air_density
 
 #%%
 #calculo de H0
@@ -105,7 +105,7 @@ mws_100=mws_100.interp_like(theta_0)
 #xr.align(delta_T,mws_100,join='exact')
 h_0=(-CD*air_density*CP*mws_100)*(theta_r-theta_0)
 h_0=h_0.assign_attrs(units='W m**-1', long_name='Mean surface heat flux')
-h_0[5,:,:].plot()
+#h_0[5,:,:].plot()
 
 
 # %%
@@ -117,7 +117,7 @@ tau_0=air_density*CD*(mws_100)**2
 
 u_star=(tau_0/air_density)**0.5
 u_star=u_star.assign_attrs(units='m/s',long_name='Friction velocity')
-u_star[5,:,:].plot()
+#u_star[5,:,:].plot()
 
 # %%
 #Comprimento de obukhov
@@ -126,26 +126,57 @@ xr.align(u_star,data_erddap.SST,h_0,join='exact') #check para ver se coordenadas
 
 l_obk=-(u_star**3)/(k*g/(data_erddap.SST+273.15)*h_0/(air_density*CP))
 l_obk=l_obk.assign_attrs(units='m',long_name='Obukhov length')
-l_obk[5,:,:].plot(robust=True) #robust=True plota o 2ndo e o 98vo percentis dos dados, para fugir de outliers
+#l_obk[5,:,:].plot(robust=True) #robust=True plota o 2ndo e o 98vo percentis dos dados, para fugir de outliers
 
 # %%
 #bulk Richardson number
 
-rb=g*100*((t2m_era_5_interp-data_erddap.SST)+273.15)/((273.15+t2m_era_5_interp)*mws_100**2)
-rb[5,:,:].plot()
+#rb=g*100*((t2m_era_5_interp-data_erddap.SST)+273.15)/((273.15+t2m_era_5_interp)*mws_100**2)
+#rb[5,:,:].plot()
 # %%
 #calculo dos fatores de correcao de estabilidade de momento
 
 x=(1-15*z/l_obk)**0.25 
 psi_m=xr.where((z/l_obk)>0,(-5*z/l_obk), (np.log(((1+x**2)/2)*((1+x)**2)/2)-2*np.arctan(x)+np.pi/2))
 psi_m=psi_m.assign_attrs(units='',long_name='Fator de correção de estabilidade Psi_m')
-psi_m[5,:,:].plot(robust=True)
+#psi_m[5,:,:].plot(robust=True)
 
 #%%
+#rugosidade superficial
+ni=1.5*10**-5
+charn=data_ERA5.chnk.interp_like(u_star,method='nearest')
+z0=charn*u_star**2/g
+z0_right=charn*u_star**2/g+ni/u_star
+z0=z0.assign_attrs(units='m',long_name='rugosidade superficial')
+
+#%%
+mws_150m_neutral=u_star/k*np.log(z/z0)
+mws_150m_neutral_z0correct=u_star/k*np.log(z/z0_right)
+mws_150m_neutral=mws_150m_neutral.assign_attrs(units='m/s',long_name='velocidade-150m-neutra')
+
+mws_150m_corrected=u_star/k*(np.log(z/z0)-psi_m)
+mws_150m_corrected=mws_150m_corrected.assign_attrs(units='m/s',long_name='velocidade-150m-corrigida')
+
+#z0[5,:,:].plot()
+
+#%%
+#% differences, with and without stability
+
+diff_mws_150=mws_150m_neutral-mws_150m_corrected
+diff_mws_150=diff_mws_150.assign_attrs(units='m/s',long_name='diferença neutro-estabilidade')
+
+diff_mws_150_perc=(mws_150m_neutral-mws_150m_corrected)/mws_150m_neutral*100
+diff_mws_150_perc=diff_mws_150_perc.assign_attrs(units='%',long_name='diferença percentual neutro-estabilidade')
+
+#diff_mws_150_perc[5,:,:].plot()
+# %%
+
 #Saving
 
-l_obk.to_netcdf(fr"C:\Users\bllet\Documents\TCC\TCC\Results\lobk-{init_date}-{end_date}")
+#l_obk.to_netcdf(fr"C:\Users\bllet\Documents\TCC\TCC\Results\lobk-{init_date}-{end_date}")
 psi_m.to_netcdf(fr"C:\Users\bllet\Documents\TCC\TCC\Results\psi_m-{init_date}-{end_date}")
-#df=l_obk.to_dataframe("l_obk")
-#df.to_csv(r"C:\Users\bllet\Documents\UFRGS\2022_2\03.TCC\03.Working\leitor_ERDDAP\sanity_checks\lbk_check.csv")
+mws_150m_neutral.to_netcdf(fr"C:\Users\bllet\Documents\TCC\TCC\Results\mws-neutral-{init_date}-{end_date}")
+mws_150m_corrected.to_netcdf(fr"C:\Users\bllet\Documents\TCC\TCC\Results\mws-corrected-{init_date}-{end_date}")
+diff_mws_150_perc.to_netcdf(fr"C:\Users\bllet\Documents\TCC\TCC\Results\perc-diff{init_date}-{end_date}")
+print("acabou!")
 # %%
