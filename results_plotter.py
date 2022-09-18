@@ -17,9 +17,9 @@ g=9.81
 
 #CODIGO
 
-psi_m_address= r'C:\Users\bllet\Documents\TCC\TCC\input files\ERA5-Charnock\adaptor.mars.internal-1662689162.808587-5628-16-4d66738b-b98a-417b-92b9-7634ef9eb003.nc' #endereço netcdf de fator de correção psi_m
+adress= r'C:\Users\bllet\Documents\TCC\TCC\Results\monthly_results\mws-corrected-01-01-2015-02-01-2015'
 
-psi_m=xr.open_dataset(psi_m_address) 
+dummy=xr.open_dataset(adress) 
 
 #z0=charn*ustar**2/g
 

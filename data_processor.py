@@ -26,12 +26,18 @@ e=2.71828182845904523536028747135266249775724709369995 #euler/napier's number
 k=0.4 #von karmann constant
 g=9.81 #gravity
 z=150 #height for calculation of wind speed influence
+ni=1.5*10**-5 #kinematic viscosity
+#coordenadas de pontos de análise
+pnt_1_stable=[-23, -41.2] 
+pnt_2_stable=[-23.470929, -43.882854]
+pnt_3_normal=[-24.421367, -39.161394]
 
-path_era5=r'C:\Users\bllet\Documents\TCC\TCC\input files\ERA5-Charnock\2015-ERA5.nc' #Path.cwd().joinpath("downloaded_files","01-2013-testERA5.nc")
-path_ERDDAP= r'C:\Users\bllet\Documents\TCC\TCC\input files\2015-2016-erddap-old.nc' #Path.cwd().joinpath("downloaded_files","2011-2012-ERDDAP-old_dataset.nc")
 
-init_date='01-01-2015' #input importante
-end_date='02-01-2015' #input importante
+path_era5=r'C:\Users\bllet\Documents\TCC\TCC\input files\ERA5-Charnock\2012-ERA5.nc' #Path.cwd().joinpath("downloaded_files","01-2013-testERA5.nc")
+path_ERDDAP= r'C:\Users\bllet\Documents\TCC\TCC\input files\2012-2013-erddap-old.nc' #Path.cwd().joinpath("downloaded_files","2011-2012-ERDDAP-old_dataset.nc")
+
+init_date='01-01-2012' #input importante
+end_date='04-01-2012' #input importante
 
 #%%
 #carregar dados
@@ -62,12 +68,13 @@ delta_T=delta_T.assign_attrs(units='C', long_name='Air-sea Temp diff')
 #delta_T[5,:,:].plot()
 
 #%%
-#calculo da velocide
+#calculo da velocidade
 
 mws_100=(data_ERA5.u100**2+data_ERA5.v100**2)**0.5 #componentes u e v para a total
 
 mws_100=mws_100.resample(time='1D').mean()
 #mws_100[1,:,:].plot()
+
 #%%
 #potential temperatures
 
@@ -87,6 +94,8 @@ press=data_ERA5.sp.interp_like(data_erddap.SST,method='nearest') #interpola pres
 
 theta_0=(data_erddap.SST*(10**5/press)**0.286)
 theta_0=theta_0.assign_attrs(units="C",long_name="potential temperature Theta_0")
+
+#%%
 #theta_0['latitude']=np.round(theta_0['latitude'],2)
 theta_r=theta_r.interp_like(theta_0,method='linear')
 
@@ -96,7 +105,7 @@ theta_r=theta_r.interp_like(theta_0,method='linear')
 #temp_dewpt=data_ERA5.d2m
 #specific_humidity=mpcalc.specific_humidity_from_dewpoint(press, temp_dewpt)
 air_density=data_ERA5.p140209.mean()
-#air_density
+air_density
 
 #%%
 #calculo de H0
@@ -129,11 +138,6 @@ l_obk=l_obk.assign_attrs(units='m',long_name='Obukhov length')
 #l_obk[5,:,:].plot(robust=True) #robust=True plota o 2ndo e o 98vo percentis dos dados, para fugir de outliers
 
 # %%
-#bulk Richardson number
-
-#rb=g*100*((t2m_era_5_interp-data_erddap.SST)+273.15)/((273.15+t2m_era_5_interp)*mws_100**2)
-#rb[5,:,:].plot()
-# %%
 #calculo dos fatores de correcao de estabilidade de momento
 
 x=(1-15*z/l_obk)**0.25 
@@ -143,15 +147,13 @@ psi_m=psi_m.assign_attrs(units='',long_name='Fator de correção de estabilidade
 
 #%%
 #rugosidade superficial
-ni=1.5*10**-5
+
 charn=data_ERA5.chnk.interp_like(u_star,method='nearest')
-z0=charn*u_star**2/g
-z0_right=charn*u_star**2/g+ni/u_star
+z0=charn*u_star**2/g+ni/u_star
 z0=z0.assign_attrs(units='m',long_name='rugosidade superficial')
 
 #%%
 mws_150m_neutral=u_star/k*np.log(z/z0)
-mws_150m_neutral_z0correct=u_star/k*np.log(z/z0_right)
 mws_150m_neutral=mws_150m_neutral.assign_attrs(units='m/s',long_name='velocidade-150m-neutra')
 
 mws_150m_corrected=u_star/k*(np.log(z/z0)-psi_m)
@@ -170,13 +172,32 @@ diff_mws_150_perc=diff_mws_150_perc.assign_attrs(units='%',long_name='diferença
 
 #diff_mws_150_perc[5,:,:].plot()
 # %%
-
-#Saving
+#Salvando medias mensais
+results_folder=r"C:\Users\bllet\Documents\TCC\TCC\Results\monthly_results"
 
 #l_obk.to_netcdf(fr"C:\Users\bllet\Documents\TCC\TCC\Results\lobk-{init_date}-{end_date}")
-psi_m.to_netcdf(fr"C:\Users\bllet\Documents\TCC\TCC\Results\psi_m-{init_date}-{end_date}")
-mws_150m_neutral.to_netcdf(fr"C:\Users\bllet\Documents\TCC\TCC\Results\mws-neutral-{init_date}-{end_date}")
-mws_150m_corrected.to_netcdf(fr"C:\Users\bllet\Documents\TCC\TCC\Results\mws-corrected-{init_date}-{end_date}")
-diff_mws_150_perc.to_netcdf(fr"C:\Users\bllet\Documents\TCC\TCC\Results\perc-diff{init_date}-{end_date}")
-print("acabou!")
+psi_m.resample(time="1M").mean().to_netcdf(results_folder+fr"\psi_m-{init_date}-{end_date}.nc")
+mws_150m_neutral.resample(time="1M").mean().to_netcdf(results_folder+fr"\mws-neutral-{init_date}-{end_date}.nc")
+mws_150m_corrected.resample(time="1M").mean().to_netcdf(results_folder+fr"\mws-corrected-{init_date}-{end_date}.nc")
+diff_mws_150_perc.resample(time="1M").mean().to_netcdf(results_folder+fr"\perc-diff{init_date}-{end_date}.nc")
+print("resultados mensais salvos")
+
 # %%
+#plotting specific points
+
+diff_mws_150_perc_pnt_1=diff_mws_150_perc.isel(latitude=pnt_1_stable[0],longitude=pnt_1_stable[1])
+diff_mws_150_perc_pnt_2=diff_mws_150_perc.isel(latitude=pnt_2_stable[0],longitude=pnt_2_stable[1])
+diff_mws_150_perc_pnt_3=diff_mws_150_perc.isel(latitude=pnt_3_normal[0],longitude=pnt_3_normal[1])
+
+diff_mws_150_perc_pnt_1.plot()
+# %%
+#selecionar pontos específicos e salvar a série temporal, para analisar
+
+pnt_1_data=diff_mws_150_perc.sel(latitude=pnt_1_stable[0],longitude=pnt_1_stable[1],method='nearest')
+pnt_1_data.to_netcdf(results_folder+r'\Timeseries'+fr"\diff_mws_150_perc-{pnt_1_stable[0]}-{pnt_1_stable[1]}-{init_date}-{end_date}.nc")
+
+pnt_2_data=diff_mws_150_perc.sel(latitude=pnt_2_stable[0],longitude=pnt_2_stable[1],method='nearest')
+pnt_2_data.to_netcdf(results_folder+r'\Timeseries'+fr"\diff_mws_150_perc-{pnt_2_stable[0]}-{pnt_2_stable[1]}-{init_date}-{end_date}.nc")
+
+pnt_2_data=diff_mws_150_perc.sel(latitude=pnt_3_normal[0],longitude=pnt_3_normal[1],method='nearest')
+pnt_2_data.to_netcdf(results_folder+r'\Timeseries'+fr"\diff_mws_150_perc-{pnt_3_normal[0]}-{pnt_3_normal[1]}-{init_date}-{end_date}.nc")
